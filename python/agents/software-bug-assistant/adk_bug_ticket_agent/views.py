@@ -30,7 +30,7 @@ except Exception as e:
     session_service = None # Set to None if init fails
 
 root_agent = Agent(
-    model="gemini-2.0-flash",
+    model="gemini-2.5-flash",
     name="software_assistant_agent", # Changed name slightly to avoid potential conflicts
     instruction=prompt.agent_instruction,
     tools=[get_current_date, search_tool, *toolbox_tools],
