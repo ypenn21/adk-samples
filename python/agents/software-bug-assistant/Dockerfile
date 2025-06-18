@@ -17,11 +17,14 @@ RUN uv sync --frozen --no-install-project --no-dev
 # Installing separately from its dependencies allows optimal layer caching
 RUN uv sync --frozen --no-dev
 
+# Collect static files
+RUN python manage.py collectstatic --noinput
+
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Expose the port
 EXPOSE 8080
 
-# Run adk web by default, can also run api_server if you choose
-ENTRYPOINT ["uv", "run", "adk", "web", "--host", "0.0.0.0", "--port", "8080"]
+# Run Gunicorn as the production server
+ENTRYPOINT ["gunicorn", "web_ui.wsgi:application", "--bind", "0.0.0.0:8080"]
