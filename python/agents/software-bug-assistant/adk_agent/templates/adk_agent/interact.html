@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ADK Agent Interaction</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        h1 { color: #333; }
+        #chatbox { width: 100%; max-width: 600px; margin: 0 auto; background-color: #fff; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); padding: 20px; }
+        .message { margin-bottom: 15px; padding: 10px; border-radius: 5px; }
+        .user-message { background-color: #e1f5fe; text-align: right; }
+        .agent-message { background-color: #f0f0f0; }
+        #messageInput { width: calc(100% - 80px); padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-right: 10px; }
+        button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        #conversation { max-height: 400px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #eee; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div id="chatbox">
+        <h1>Chat with Software Bug Assistant</h1>
+        <div id="conversation">
+            <div class="message agent-message">Hello! How can I help you today?</div>
+        </div>
+        <div>
+            <input type="text" id="messageInput" placeholder="Type your message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            appendMessage(message, 'user-message');
+            input.value = '';
+            input.disabled = true;
+            document.querySelector('button').disabled = true;
+
+            try {
+                const response = await fetch('{% url "interact_with_agent" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // Django's CSRF token would be needed if not using @csrf_exempt
+                        // 'X-CSRFToken': '{{ csrf_token }}' 
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                appendMessage(data.reply, 'agent-message');
+            } catch (error) {
+                console.error('Error:', error);
+                appendMessage(`Error: ${error.message}`, 'agent-message');
+            }
+            input.disabled = false;
+            document.querySelector('button').disabled = false;
+            input.focus();
+        }
+
+        function appendMessage(text, className) {
+            const conversation = document.getElementById('conversation');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', className);
+            messageDiv.textContent = text;
+            conversation.appendChild(messageDiv);
+            conversation.scrollTop = conversation.scrollHeight; // Scroll to bottom
+        }
+
+        document.getElementById('messageInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
