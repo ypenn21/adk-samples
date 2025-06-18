@@ -11,8 +11,7 @@ from google.adk.agents import Agent
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
 from google.genai import types as genai_types # Aliased to avoid conflict if Django has a 'types'
-
-from software_bug_assistant.prompt import agent_instruction
+from . import prompt
 from software_bug_assistant.tools.tools import get_current_date, search_tool, toolbox_tools
 
 # --- Global Initializations ---
@@ -33,7 +32,7 @@ except Exception as e:
 root_agent = Agent(
     model="gemini-2.0-flash",
     name="software_assistant_agent", # Changed name slightly to avoid potential conflicts
-    instruction=agent_instruction,
+    instruction=prompt.agent_instruction,
     tools=[get_current_date, search_tool, *toolbox_tools],
 )
 # --- End Global Initializations ---
