@@ -13,6 +13,32 @@
         button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
         button:hover { background-color: #0056b3; }
         #conversation { max-height: 400px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #eee; padding: 10px; }
+
+        /* New table styles */
+        .agent-message table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.9em;
+            table-layout: auto; /* Allows table to adjust to content */
+        }
+        .agent-message th, .agent-message td {
+            border: 1px solid #ccc; /* Consistent border for table elements */
+            padding: 8px;
+            text-align: left;
+            word-wrap: break-word; /* Ensures long text wraps within cells */
+        }
+        .agent-message th {
+            background-color: #e0e0e0; /* Distinct background for headers */
+            font-weight: bold;
+            color: #333;
+        }
+        .agent-message tr:nth-child(even) td { /* Zebra striping for data rows */
+            background-color: #f9f9f9;
+        }
+        .agent-message tr:hover td { /* Hover effect for data rows */
+            background-color: #f1f1f1;
+        }
     </style>
 </head>
 <body>
@@ -33,7 +59,17 @@
             const message = input.value.trim();
             if (!message) return;
 
-            appendMessage(message, 'user-message');
+            const conversation = document.getElementById('conversation');
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.classList.add('message', 'user-message');
+            // Use <pre> for user messages to preserve formatting (e.g., newlines)
+            const userPre = document.createElement('pre');
+            userPre.style.whiteSpace = 'pre-wrap';
+            userPre.style.fontFamily = 'inherit'; // Use the body's font
+            userPre.textContent = message;
+            userMessageDiv.appendChild(userPre);
+            conversation.appendChild(userMessageDiv);
+
             input.value = '';
             input.disabled = true;
             document.querySelector('button').disabled = true;
@@ -55,23 +91,101 @@
                 }
 
                 const data = await response.json();
-                appendMessage(data.reply, 'agent-message');
+                appendAgentMessage(data.reply, 'agent-message');
             } catch (error) {
                 console.error('Error:', error);
-                appendMessage(`Error: ${error.message}`, 'agent-message');
+                appendAgentMessage(`Error: ${error.message}`, 'agent-message'); // Display errors similarly
             }
             input.disabled = false;
             document.querySelector('button').disabled = false;
             input.focus();
+            conversation.scrollTop = conversation.scrollHeight; // Scroll to bottom after all updates
         }
 
-        function appendMessage(text, className) {
+        function parseMarkdownTable(markdown) {
+            const lines = markdown.trim().split('\n').map(line => line.trim());
+            if (lines.length < 2) return null; // Must have at least header and separator
+
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+            table.appendChild(thead);
+            table.appendChild(tbody);
+
+            // Header row
+            const headerLine = lines[0];
+            if (!headerLine.startsWith('|') || !(headerLine.endsWith('|') || headerLine.endsWith('| |'))) return null;
+            const headers = headerLine.slice(1, headerLine.endsWith('| |') ? -2 : -1).split('|').map(h => h.trim());
+            const trHead = document.createElement('tr');
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+
+            // Separator line
+            const separatorLine = lines[1];
+            if (!separatorLine.startsWith('|') || !(separatorLine.endsWith('|') || separatorLine.endsWith('| |')) || !separatorLine.includes('---')) return null;
+            const separatorCells = separatorLine.slice(1, separatorLine.endsWith('| |') ? -2 : -1).split('|').map(s => s.trim());
+            if (separatorCells.length !== headers.length) return null;
+            for (const cell of separatorCells) {
+                if (!cell.startsWith('---') && !cell.endsWith('---')) return null; // Basic check for '---' content
+            }
+
+
+            // Data rows
+            for (let i = 2; i < lines.length; i++) {
+                const dataLine = lines[i];
+                if (!dataLine.startsWith('|') || !(dataLine.endsWith('|') || dataLine.endsWith('| |'))) continue;
+                
+                const cells = dataLine.slice(1, dataLine.endsWith('| |') ? -2 : -1).split('|').map(c => c.trim());
+                if (cells.length !== headers.length) {
+                    console.warn('Table row cell count mismatch. Expected', headers.length, 'got', cells.length, 'Row:', dataLine);
+                    // Option: Pad with empty cells or skip. Skipping for now.
+                    continue; 
+                }
+                const trBody = document.createElement('tr');
+                cells.forEach(cellText => {
+                    const td = document.createElement('td');
+                    td.textContent = cellText;
+                    trBody.appendChild(td);
+                });
+                tbody.appendChild(trBody);
+            }
+            
+            if (headers.length > 0) { // Return table if headers were successfully parsed
+                return table;
+            }
+            return null;
+        }
+
+        function appendAgentMessage(text, className) {
             const conversation = document.getElementById('conversation');
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', className);
-            messageDiv.textContent = text;
+
+            const trimmedText = text.trim();
+            const firstLine = trimmedText.split('\n')[0].trim();
+            let tableElement = null;
+
+            // Check for Markdown table indicators
+            if (firstLine.startsWith('|') && (firstLine.endsWith('|') || firstLine.endsWith('| |')) && trimmedText.includes('| --- |')) {
+                 tableElement = parseMarkdownTable(trimmedText);
+            }
+            
+            if (tableElement) {
+                messageDiv.appendChild(tableElement);
+            } else {
+                // Fallback to preformatted text if not a table or parsing fails
+                const pre = document.createElement('pre');
+                pre.style.whiteSpace = 'pre-wrap';
+                pre.style.fontFamily = 'inherit';
+                pre.textContent = text;
+                messageDiv.appendChild(pre);
+            }
+
             conversation.appendChild(messageDiv);
-            conversation.scrollTop = conversation.scrollHeight; // Scroll to bottom
         }
 
         document.getElementById('messageInput').addEventListener('keypress', function(event) {
