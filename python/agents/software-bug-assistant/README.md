@@ -291,7 +291,10 @@ Here are some example requests you may ask the agent:
 3. Run django:
 
 ```bash
-python manage.py runserver
+rm uv.lock
+uv sync
+python manage.py runserver 
+ gunicorn web_ui.wsgi:application --bind 0.0.0.0:8000
 ```
 
 ## ☁️ Deploy to Google Cloud 
