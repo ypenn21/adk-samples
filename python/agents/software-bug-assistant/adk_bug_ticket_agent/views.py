@@ -12,7 +12,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
 from google.genai import types as genai_types # Aliased to avoid conflict if Django has a 'types'
 from . import prompt
-from software_bug_assistant.tools.tools import get_current_date, search_tool, toolbox_tools
+from .tools.tools import get_current_date, search_tool, toolbox_tools
 
 # --- Global Initializations ---
 APP_NAME = "SoftwareBugAssistant"
